@@ -1,1 +1,87 @@
-/* (This file is intentionally blank for now) */
+/* This styles the main layout */
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: sans-serif;
+}
+
+/* This is the new container for the staff + highlighter */
+#staff-container {
+    position: relative; /* This lets us stack elements inside it */
+    margin-top: 20px;
+    /* This background will "shine through" the transparent staff */
+    background-color: white; 
+}
+
+/* Makes the staff look clickable */
+#staff-output {
+    cursor: pointer;
+    border: 1px solid #eee;
+    position: relative;
+    z-index: 2; /* Place the staff ON TOP */
+    background-color: transparent; /* Make the staff see-through */
+}
+
+/* This is the new highlighter bar */
+#line-highlighter {
+    position: absolute; /* Float on top of the container */
+    left: 10px; /* Match the stave's X-position */
+    width: 480px; /* Match the stave's width */
+    height: 5px; /* VexFlow's half-spacing */
+    background: #3498db;
+    opacity: 0.3;
+    z-index: 1; /* Place the highlighter BEHIND */
+    display: none; /* Hide it by default */
+    pointer-events: none; /* Clicks go "through" it */
+    border-radius: 2px;
+}
+
+
+/* --- The rest of the styles are unchanged --- */
+
+#palettes-container {
+    display: flex;
+    flex-direction: column;
+    width: 500px;
+    margin-top: 15px;
+}
+
+.palette-box {
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+.palette-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.palette-tools {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.tool-button {
+    border: 1px solid #aaa;
+    background: #eee;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.tool-button.selected {
+    background: #3498db;
+    color: white;
+    border-color: #2980b9;
+}
+
+#controls {
+    margin-top: 10px;
+}

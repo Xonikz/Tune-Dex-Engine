@@ -4,18 +4,45 @@
     <meta charset="UTF-8">
     <title>Tune-Dex Engine</title>
     <link rel="stylesheet" href="style.css">
-    
     <script src="./vexflow.min.js"></script>
 </head>
 <body>
     <h1>Tune-Dex Engine</h1>
 
-    <div id="staff-output"></div>
+    <div id="staff-container">
+        <div id="staff-output"></div>
+        <div id="line-highlighter"></div>
+    </div>
 
-    <button id="add-note-button">Add a C Note</button>
-    <button id="add-rest-button">Add a Quarter Rest</button>
-    <button id="export-midi-button">Export .mid</button>
-    <button id="export-xpt-button">Export .xpt</button>
+    <div id="palettes-container">
+        <div class="palette-box">
+            <div class="palette-title">Notes</div>
+            <div class="palette-tools">
+                <button class="tool-button selected" data-tool="w_note" data-type="note" data-duration="w" data-len="384">Whole</button>
+                <button class="tool-button" data-tool="h_note" data-type="note" data-duration="h" data-len="192">Half</button>
+                <button class="tool-button" data-tool="q_note" data-type="note" data-duration="q" data-len="96">Quarter</button>
+                <button class="tool-button" data-tool="8_note" data-type="note" data-duration="8" data-len="48">Eighth</button>
+                <button class="tool-button" data-tool="16_note" data-type="note" data-duration="16" data-len="24">16th</button>
+            </div>
+        </div>
+        <div class="palette-box">
+            <div class="palette-title">Rests</div>
+             <div class="palette-tools">
+                <button class="tool-button" data-tool="w_rest" data-type="rest" data-duration="w" data-len="384">Whole</button>
+                <button class="tool-button" data-tool="h_rest" data-type="rest" data-duration="h" data-len="192">Half</button>
+                <button class="tool-button" data-tool="q_rest" data-type="rest" data-duration="q" data-len="96">Quarter</button>
+                <button class="tool-button" data-tool="8_rest" data-type="rest" data-duration="8" data-len="48">Eighth</button>
+                <button class="tool-button" data-tool="16_rest" data-type="rest" data-duration="16" data-len="24">16th</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="undo-button">Undo</button>
+        <button id="clear-button">Clear Staff</button>
+        <button id="export-midi-button">Export .mid</button>
+        <button id="export-xpt-button">Export .xpt</button>
+    </div>
 
     <script src="app.js"></script>
 </body>
