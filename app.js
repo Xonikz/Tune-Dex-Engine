@@ -98,5 +98,5 @@ function generateXpt() {
 // Connect the button to the function
 exportXptButton.addEventListener('click', generateXpt);
 exportMidiButton.addEventListener('click', () => {
-    alert("MIDI export is coming soon!");
+    alert("MIDI export is coming soon (like really soon!");
 });
