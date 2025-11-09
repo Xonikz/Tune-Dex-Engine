@@ -1,102 +1,165 @@
-// "Tune-Dex Card" data model
-let tuneData = {
-  id: "t-123456789",
-  title: "My First Riff",
-  key: "C",
-  timeSignature: "4/4",
-  bpm: 120,
-  events: [] // Starts with an empty list of events
-};
+// Wait for the ENTIRE page, including external scripts, to load
+window.addEventListener('load', (event) => {
 
-//HTML elements
-const addButton = document.getElementById('add-note-button');
-const dataDisplay = document.getElementById('data-display');
+    // --- VexFlow Setup ---
+    // Get the VexFlow classes we need
+    const { Factory, Formatter, StaveNote } = Vex.Flow;
+    const staffOutput = document.getElementById('staff-output');
 
-// Dispay raw data
-function updateDisplay() {
-  // JSON.stringify formating
-  dataDisplay.textContent = JSON.stringify(tuneData, null, 2);
-}
+    // --- The Tune-Dex Data Model ---
+    let tuneData = {
+      id: "t-123456789",
+      title: "My First Riff",
+      key: "C",
+      timeSignature: "4/4",
+      bpm: 120,
+      events: []
+    };
 
-// A function to add a new note
-function addTestNote() {
-  // Find the last position to "append" the new note
-  let lastEvent = tuneData.events[tuneData.events.length - 1];
-  let newPosition = lastEvent ? lastEvent.pos + lastEvent.len : 0;
+    // --- Find the HTML elements ---
+    const addButton = document.getElementById('add-note-button');
+    const addRestButton = document.getElementById('add-rest-button');
+    const exportMidiButton = document.getElementById('export-midi-button');
+    const exportXptButton = document.getElementById('export-xpt-button');
 
-  // New note we are adding
-  let newNote = {
-    type: "note",
-    key: 60,       // 60 is MIDI for Middle C
-    pos: newPosition,
-    len: 96        // 96 ticks = a quarter note
-  };
+    // --- Main Drawing Function (NEW - Bypassing EasyScore) ---
+    function drawStaff() {
+      // Clear out the old staff drawing
+      staffOutput.innerHTML = '';
 
-  // New note to the events list
-  tuneData.events.push(newNote);
-  console.log("Added note:", newNote);
+      // Initialize VexFlow
+      const vf = new Factory({
+        renderer: { elementId: 'staff-output', width: 500, height: 150 },
+      });
+      
+      // 1. Create a stave and draw it
+      const stave = vf.Stave(10, 0, 480); // x, y, width
+      stave.addClef('treble').addTimeSignature(tuneData.timeSignature);
+      stave.setContext(vf.getContext()).draw();
 
-  // Update the screen to show the new data
-  updateDisplay();
-}
+      // If there are no events, just return (showing the empty staff)
+      if (tuneData.events.length === 0) {
+        console.log("No notes to draw.");
+        return;
+      }
 
-// Connect the button to the function
-addButton.addEventListener('click', addTestNote);
+      // 2. Build the notes array manually using StaveNote
+      const notes = [];
+      
+      tuneData.events.forEach(event => {
+        let note;
+        
+        // *** THIS IS THE FIX FOR BOTH BUGS ***
+        // We will build StaveNote objects directly instead of using EasyScore
+        
+        if (event.type === 'rest') {
+          console.log("Creating rest");
+          note = new StaveNote({
+            keys: ["b/4"], // 'b/4' is the default rest position
+            duration: "qr" // 'qr' identifies it as a quarter rest
+          });
 
-// Show the initial data when the page loads
-updateDisplay();
+        } else { // It's a note
+          console.log("Creating note");
+          // Use keyMap to create the note
+          const keyMap = {
+            60: 'C/4', 61: 'C#/4', 62: 'D/4', 63: 'D#/4', 64: 'E/4', 65: 'F/4',
+            66: 'F#/4', 67: 'G/4', 68: 'G#/4', 69: 'A/4', 70: 'A#/4', 71: 'B/4', 72: 'C/5'
+          };
+          const keyName = keyMap[event.key] || 'C/4'; // Default to C4
+          const duration = (event.len === 96) ? 'q' : '8'; // Default to quarter
+          
+          note = new StaveNote({
+            keys: [keyName],
+            duration: duration
+          });
+        }
+        
+        notes.push(note);
+      });
 
-// Find the new export buttons
-const exportMidiButton = document.getElementById('export-midi-button');
-const exportXptButton = document.getElementById('export-xpt-button');
+      // 3. Manually format and draw the notes
+      Formatter.SimpleFormat(notes, 50); // Start 50px in to clear the clef
+      notes.forEach(note => {
+        note.setStave(stave).setContext(vf.getContext()).draw();
+      });
 
-// Download data function
-function downloadFile(content, fileName, mimeType) {
-  // Create a blob
-  const blob = new Blob([content], { type: mimeType });
-
-  // Create a URL for that blob
-  const url = URL.createObjectURL(blob);
-
-  // Create a temporary <a> tag to trigger the download
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a); // Add it to the page
-  a.click(); // Simulate a click
-  
-  // Clean up by removing the tag and revoking the URL
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-// The .xpt (LMMS XML Pattern) generation engine
-function generateXpt() {
-  console.log("Generating .xpt file...");
-
-  // Start building the XML string
-  let xmlString = `<?xml version="1.0"?>
-<!DOCTYPE lmms-project>
-<lmms-project type="pattern" creatorversion="1.3.0" creator="Tune-Dex Engine" version="20">
-  <head/>
-  <pattern type="1" muted="0" steps="16" name="${tuneData.title}" pos="0">\n`;
-
-  // Loop through the events and add <note> tags
-  tuneData.events.forEach(event => {
-    if (event.type === 'note') {
-      // Add a note line to the XML
-      xmlString += `    <note key="${event.key}" pan="0" len="${event.len}" pos="${event.pos}" vol="100"/>\n`;
+      console.log("Draw complete.");
     }
-  });
 
-  // Close the XML tags
-  xmlString += `  </pattern>
-</lmms-project>`;
+    // --- Note/Rest Adding Functions ---
+    function addTestNote() {
+      console.log("Add Note button clicked");
+      let lastEvent = tuneData.events[tuneData.events.length - 1];
+      let newPosition = lastEvent ? lastEvent.pos + lastEvent.len : 0;
 
-  // Use the helper function to download the file
-  downloadFile(xmlString, `${tuneData.title}.xpt`, 'application/xml');
-}
-// Connect the button to the function
-exportXptButton.addEventListener('click', generateXpt);
-exportMidiButton.addEventListener('click', () => {
-    alert("MIDI export is coming soon (like really soon!");
-});
+      let newNote = {
+        type: "note",
+        key: 60,       // 60 is MIDI for Middle C
+        pos: newPosition,
+        len: 96        // 96 ticks = a quarter note
+      };
+
+      tuneData.events.push(newNote);
+      drawStaff();
+    }
+
+    function addTestRest() {
+      console.log("Add Rest button clicked");
+      let lastEvent = tuneData.events[tuneData.events.length - 1];
+      let newPosition = lastEvent ? lastEvent.pos + lastEvent.len : 0;
+
+      let newRest = {
+        type: "rest",
+        pos: newPosition,
+        len: 96 // 96 ticks = a quarter rest
+      };
+
+      tuneData.events.push(newRest);
+      drawStaff();
+    }
+    
+    // --- Export Functions (Unchanged) ---
+    function downloadFile(content, fileName, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function generateXpt() {
+      console.log("Generating .xpt file...");
+      let xmlString = `<?xml version="1.0"?>
+    <!DOCTYPE lmms-project>
+    <lmms-project type="pattern" creatorversion="1.3.0" creator="Tune-Dex Engine" version="20">
+      <head/>
+      <pattern type="1" muted="0" steps="16" name="${tuneData.title}" pos="0">\n`;
+
+      tuneData.events.forEach(event => {
+        if (event.type === 'note') {
+          xmlString += `    <note key="${event.key}" pan="0" len="${event.len}" pos="${event.pos}" vol="100"/>\n`;
+        }
+      });
+
+      xmlString += `  </pattern>
+    </lmms-project>`;
+      downloadFile(xmlString, `${tuneData.title}.xpt`, 'application/xml');
+    }
+
+    // --- Button Connections ---
+    addButton.addEventListener('click', addTestNote);
+    addRestButton.addEventListener('click', addTestRest);
+    exportXptButton.addEventListener('click', generateXpt);
+    exportMidiButton.addEventListener('click', () => {
+        alert("MIDI export is coming soon!");
+    });
+
+    // --- Initial Load ---
+    drawStaff();
+
+}); // <-- The closing bracket for the 'window.load' listener
