@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tune-Dex Engine</title>
+    <title>Tune-Dex Engine (New Prototype)</title>
     <link rel="stylesheet" href="style.css">
-    <script src="./vexflow.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 </head>
 <body>
     <h1>Tune-Dex Engine</h1>
@@ -12,38 +12,13 @@
     <div id="app-container">
 
         <div id="staff-container">
-            <div id="staff-output"></div>
-            <div id="line-highlighter"></div>
-        </div>
-
-        <div id="palettes-container">
-            
-            <div class="palette-box">
-                <div class="palette-tools">
-                    <button class="tool-button selected" data-tool="w_note" data-type="note" data-duration="w" data-len="384" title="Whole Note">𝅝</button>
-                    <button class="tool-button" data-tool="h_note" data-type="note" data-duration="h" data-len="192" title="Half Note">𝅗𝅥</button>
-                    <button class="tool-button" data-tool="q_note" data-type="note" data-duration="q" data-len="96" title="Quarter Note">𝅘𝅥</button>
-                    <button class="tool-button" data-tool="8_note" data-type="note" data-duration="8" data-len="48" title="Eighth Note">𝅘𝅥𝅮</button>
-                    <button class="tool-button" data-tool="16_note" data-type="note" data-duration="16" data-len="24" title="16th Note">𝅘𝅥𝅯</button>
-                </div>
-            </div>
-            
-            <div class="palette-box">
-                 <div class="palette-tools">
-                    <button class="tool-button" data-tool="w_rest" data-type="rest" data-duration="w" data-len="384" title="Whole Rest">𝄻</button>
-                    <button class="tool-button" data-tool="h_rest" data-type="rest" data-duration="h" data-len="192" title="Half Rest">𝄼</button>
-                    <button class="tool-button" data-tool="q_rest" data-type="rest" data-duration="q" data-len="96" title="Quarter Rest">𝄽</button>
-                    <button class="tool-button" data-tool="8_rest" data-type="rest" data-duration="8" data-len="48" title="Eighth Rest">𝄾</button>
-                    <button class="tool-button" data-tool="16_rest" data-type="rest" data-duration="16" data-len="24" title="16th Rest">𝄿</button>
-                </div>
-            </div>
-
+            <textarea id="note-input" placeholder="Enter notes: C4, E4, G4, A4..."></textarea>
         </div>
 
         <div id="controls">
-            <button id="undo-button">Undo</button>
-            <button id="clear-button">Clear Staff</button>
-            <button id="export-midi-button">Export .mid</button>
+            <button id="play-original-button">Play Original</button>
+            <button id="generate-button">Generate & Play Arp</button>
+            <button id="stop-button">Stop</button>
             <button id="export-xpt-button">Export .xpt</button>
         </div>
 

@@ -1,297 +1,186 @@
 // Wait for the ENTIRE page, including external scripts, to load
 window.addEventListener('load', (event) => {
 
-    // --- VexFlow Setup ---
-    const { Factory, Formatter, StaveNote, BarNote } = Vex.Flow;
-    const staffOutput = document.getElementById('staff-output');
-
-    // --- Create and configure VexFlow components ONCE ---
-    const vf = new Factory({
-      renderer: { elementId: 'staff-output', width: 500, height: 150 },
-    });
-    const stave = vf.Stave(10, 0, 480);
-    stave.addClef('treble').addTimeSignature("4/4");
-    
-    // --- VexFlow Sizing Constants ---
-    let staveTopLineY;
-    let staveHalfSpacing;
-    let isStaveInitialized = false; // Flag to run setup once
-
-    // --- The Tune-Dex Data Model ---
-    let tuneData = {
-      id: "t-123456789",
-      title: "My First Riff",
-      key: "C",
-      timeSignature: "4/4",
-      bpm: 120,
-      events: [] 
-    };
-    
-    // --- Application State ---
-    let currentTool = {
-        type: "note",
-        duration: "w",
-        len: 384,
-        toolName: "w_note"
-    };
-    
-    // --- Constants ---
-    const TICKS_PER_MEASURE = 384; 
+    // --- Audio Setup (Tone.js) ---
+    const synth = new Tone.Synth().toDestination();
+    let currentSequence = null; 
 
     // --- Find the HTML elements ---
-    const exportMidiButton = document.getElementById('export-midi-button');
+    const noteInput = document.getElementById('note-input');
+    const playOriginalButton = document.getElementById('play-original-button');
+    const generateButton = document.getElementById('generate-button');
+    const stopButton = document.getElementById('stop-button');
     const exportXptButton = document.getElementById('export-xpt-button');
-    const clearButton = document.getElementById('clear-button');
-    const toolButtons = document.querySelectorAll('.tool-button');
-    const lineHighlighter = document.getElementById('line-highlighter');
-    const undoButton = document.getElementById('undo-button');
 
-    // --- Main Drawing Function ---
-    function drawStaff() {
-      vf.getContext().clear();
-      stave.setContext(vf.getContext()).draw();
-
-      if (!isStaveInitialized) {
-        staveTopLineY = stave.getYForLine(0);
-        staveHalfSpacing = 5; 
-        isStaveInitialized = true;
-        console.log("Stave Initialized. Top Y:", staveTopLineY);
-      }
-
-      if (tuneData.events.length === 0) {
-        console.log("No notes to draw.");
-        return;
-      }
-
-      let notes = [];
-      let currentMeasureTicks = 0;
-
-      tuneData.events.forEach(event => {
-        let note;
-        if (event.type === 'rest') {
-          note = new StaveNote({
-            keys: ["b/4"], 
-            duration: event.duration + "r"
-          });
-        } else {
-          note = new StaveNote({
-            keys: [event.key],
-            duration: event.duration
-          });
-        }
-        notes.push(note);
-        
-        currentMeasureTicks += event.len;
-        
-        if (currentMeasureTicks >= TICKS_PER_MEASURE) {
-            notes.push(new BarNote());
-            currentMeasureTicks = 0;
-        }
-      });
-
-      Formatter.SimpleFormat(notes, 50);
-      notes.forEach(note => {
-        note.setStave(stave).setContext(vf.getContext()).draw();
-      });
-
-      console.log("Draw complete.");
-    }
-    
-    // --- Tool Palette and Click Logic ---
-    
-    // This map is now global so all functions can access it
-    const lineIndexToVexKey = {
-      "-4": "C/6", "-3": "B/5", "-2": "A/5", "-1": "G/5",
-      0: "F/5", 1: "E/5", 2: "D/5", 3: "C/5", 4: "B/4",
-      5: "A/4", 6: "G/4", 7: "F/4", 8: "E/4", 9: "D/4",
-      10: "C/4", 11: "B/3", 12: "A/3", 13: "G/3"
+    // --- Data Maps ---
+    // Map of Vex/Tone keys to MIDI numbers
+    const keyToMidi = {
+        "C3": 36, "D3": 38, "E3": 40, "F3": 41, "G3": 43, "A3": 45, "B3": 47,
+        "C4": 48, "D4": 50, "E4": 52, "F4": 53, "G4": 55, "A4": 57, "B4": 59,
+        "C5": 60, "D5": 62, "E5": 64, "F5": 65, "G5": 67, "A5": 69, "B5": 71, "C6": 72
     };
 
-    // NEW: This function ONLY selects note tools
-    function selectNoteTool(e) {
-        currentTool = {
-          type: "note",
-          duration: e.target.dataset.duration,
-          len: parseInt(e.target.dataset.len, 10),
-          toolName: e.target.dataset.tool
-        };
-        console.log("Selected note tool:", currentTool);
+    // Map of MIDI numbers back to Keys (for generating)
+    const midiToKey = {
+        36: "C3", 38: "D3", 40: "E3", 41: "F3", 43: "G3", 45: "A3", 47: "B3",
+        48: "C4", 50: "D4", 52: "E4", 53: "F4", 55: "G4", 57: "A4", 59: "B4",
+        60: "C5", 62: "D5", 64: "E5", 65: "F5", 67: "G5", 69: "A5", 71: "B5", 72: "C6"
+    };
+
+    // --- Core Data Function: Parse Text to Events ---
+    function parseNotes(text) {
+        const notes = text.split(',')
+            .map(s => s.trim().toUpperCase()) 
+            .filter(s => s.length > 0); 
         
-        // Update the "selected" class
-        toolButtons.forEach(btn => btn.classList.remove('selected'));
-        e.target.classList.add('selected');
+        let position = 0;
+        const events = [];
+
+        notes.forEach(note => {
+            events.push({
+                key: note,      
+                pos: position,  
+                len: 96,        
+                duration: "4n"
+            });
+            position += 96; 
+        });
+        return events;
     }
 
-    // NEW: This function immediately adds a rest
-    function addRestTool(e) {
-        console.log("Adding rest via button");
-        
-        // Update the "selected" class
-        toolButtons.forEach(btn => btn.classList.remove('selected'));
-        e.target.classList.add('selected');
-        
-        // Get info from the rest button
-        const restDuration = e.target.dataset.duration;
-        const restLen = parseInt(e.target.dataset.len, 10);
-
-        // Find last event position
-        let lastEvent = tuneData.events[tuneData.events.length - 1];
-        let newPosition = lastEvent ? lastEvent.pos + lastEvent.len : 0;
-        
-        // Create the new rest event
-        const newEvent = {
-            type: "rest",
-            duration: restDuration,
-            pos: newPosition,
-            len: restLen
-        };
-
-        console.log("Adding event:", newEvent);
-        tuneData.events.push(newEvent);
-        drawStaff();
-    }
-    
-    // UPDATED: This function now ONLY adds notes
-    function addEventAtClick(e) {
-        if (!isStaveInitialized) return; 
-
-        const staffTopY = staffOutput.getBoundingClientRect().top + window.scrollY;
-        const clickY = e.pageY - staffTopY;
-        const halfStepsDown = (clickY - staveTopLineY) / staveHalfSpacing;
-        const lineIndex = Math.round(halfStepsDown);
-        
-        const vexKey = lineIndexToVexKey[lineIndex];
-        if (!vexKey) {
-            console.log("Clicked out of bounds.");
-            return; 
+    // --- Audio Function: Play a sequence of events ---
+    async function playEvents(events, interval) {
+        if (currentSequence) {
+            currentSequence.stop();
+            currentSequence.dispose();
         }
         
-        let lastEvent = tuneData.events[tuneData.events.length - 1];
-        let newPosition = lastEvent ? lastEvent.pos + lastEvent.len : 0;
+        await Tone.start();
         
-        // No need to check for rest, currentTool is always a note
-        const newEvent = {
-            type: "note",
-            key: vexKey,
-            duration: currentTool.duration,
-            pos: newPosition,
-            len: currentTool.len
-        };
+        currentSequence = new Tone.Sequence((time, event) => {
+            console.log("Playing:", event.key);
+            synth.triggerAttackRelease(event.key, event.duration, time);
+        }, events, interval);
+
+        currentSequence.loop = false;
+        Tone.Transport.start();
+        currentSequence.start();
+    }
+    
+    //
+    // *** NEW, SMARTER "FAKING" ENGINE ***
+    //
+    function generateVariation(baseEvents) {
+        const newEvents = [];
+        let newPosition = 0;
         
-        console.log("Adding event:", newEvent);
-        tuneData.events.push(newEvent);
-        drawStaff();
+        // For each note the user entered...
+        baseEvents.forEach(event => {
+            // 1. Get its MIDI number
+            const rootMidi = keyToMidi[event.key] || 48; // Default to C4
+            
+            // 2. Define a simple major chord (Root, +4, +7 semitones)
+            const thirdMidi = rootMidi + 4;
+            const fifthMidi = rootMidi + 7;
+            
+            // 3. Convert back to note names
+            const rootKey = midiToKey[rootMidi] || "C4";
+            const thirdKey = midiToKey[thirdMidi] || "E4";
+            const fifthKey = midiToKey[fifthMidi] || "G4";
+
+            // 4. Create the arpeggio pattern (e.g., C-E-G-E)
+            const pattern = [
+                { key: rootKey,  pos: newPosition,      len: 24, duration: "16n" },
+                { key: thirdKey, pos: newPosition + 24, len: 24, duration: "16n" },
+                { key: fifthKey, pos: newPosition + 48, len: 24, duration: "16n" },
+                { key: thirdKey, pos: newPosition + 72, len: 24, duration: "16n" }
+            ];
+
+            // 5. Add this pattern to our lists
+            newEvents.push(...pattern); // ... is the "spread" operator
+            
+            // 6. Move the position forward one quarter note
+            newPosition += 96;
+        });
+        
+        console.log("Generated variation events:", newEvents);
+        return newEvents;
     }
 
-    // --- New Highlighter and Undo Functions ---
-    
-    function handleStaffMouseMove(e) {
-        if (!isStaveInitialized) return;
+    // --- Button Connections ---
 
-        const staffTopY = staffOutput.getBoundingClientRect().top + window.scrollY;
-        const clickY = e.pageY - staffTopY;
-        
-        const halfStepsDown = (clickY - staveTopLineY) / staveHalfSpacing;
-        const lineIndex = Math.round(halfStepsDown);
-        
-        const vexKey = lineIndexToVexKey[lineIndex];
-        if (!vexKey) {
-            lineHighlighter.style.display = 'none';
-            return;
+    // 1. Play Original Button
+    playOriginalButton.addEventListener('click', async () => {
+        console.log("Play Original clicked.");
+        await Tone.start(); 
+        const events = parseNotes(noteInput.value);
+        if (events.length > 0) {
+            const toneEvents = events.map(e => ({ key: e.key, duration: e.duration }));
+            playEvents(toneEvents, "4n"); 
         }
+    });
+    
+    // 2. Generate Button
+    generateButton.addEventListener('click', async () => {
+        console.log("Generate button clicked.");
+        await Tone.start(); 
+        
+        const baseEvents = parseNotes(noteInput.value);
+        if (baseEvents.length > 0) {
+            const newEvents = generateVariation(baseEvents);
+            if (newEvents.length > 0) {
+                // Get just the part Tone.js needs (key and duration)
+                const toneEvents = newEvents.map(e => ({ key: e.key, duration: e.duration }));
+                playEvents(toneEvents, "16n");
+            } else {
+                console.log("Generation failed, no new events.");
+            }
+        } else {
+            console.log("No base notes to generate from.");
+        }
+    });
 
-        const highlightY = (staveTopLineY + (lineIndex * staveHalfSpacing)) - (staveHalfSpacing / 2);
-        lineHighlighter.style.top = `${highlightY}px`;
-        lineHighlighter.style.display = 'block';
-    }
-    
-    function handleStaffMouseLeave(e) {
-        lineHighlighter.style.display = 'none';
-    }
-    
-    function undoLastEvent() {
-        console.log("Undoing last event");
-        tuneData.events.pop();
-        drawStaff();
-    }
-    
-    function clearStaff() {
-        console.log("Clearing staff");
-        tuneData.events = [];
-        drawStaff();
-    }
-    
-    // --- Export Functions ---
-    function downloadFile(content, fileName, mimeType) {
-      const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+    // 3. Stop Button
+    stopButton.addEventListener('click', () => {
+        console.log("Stop clicked.");
+        if (currentSequence) {
+            currentSequence.stop();
+        }
+        Tone.Transport.stop();
+    });
 
-    function generateXpt() {
-      console.log("Generating .xpt file...");
-      
-      const vexKeyToMidi = {
-        "C/6": 72, "B/5": 71, "A/5": 69, "G/5": 67,
-        "F/5": 65, "E/5": 64, "D/5": 62, "C/5": 60, "B/4": 59,
-        "A/4": 57, "G/4": 55, "F/4": 53, "E/4": 52, "D/4": 50,
-        "C/4": 48, "B/3": 47, "A/3": 45, "G/3": 43
-      };
-      
-      let xmlString = `<?xml version="1.0"?>
+    // 4. Export Button
+    exportXptButton.addEventListener('click', () => {
+        console.log("Generating .xpt file...");
+        const events = parseNotes(noteInput.value);
+        
+        // *** FIX: Export the *generated* notes, not the original ***
+        const exportEvents = generateVariation(events); 
+        
+        let xmlString = `<?xml version="1.0"?>
     <!DOCTYPE lmms-project>
     <lmms-project type="pattern" creatorversion="1.3.0" creator="Tune-Dex Engine" version="20">
       <head/>
-      <pattern type="1" muted="0" steps="16" name="${tuneData.title}" pos="0">\n`;
+      <pattern type="1" muted="0" steps="16" name="Tune-Dex Export (Variation)" pos="0">\n`;
 
-      tuneData.events.forEach(event => {
-        if (event.type === 'note') {
-          const midiKey = vexKeyToMidi[event.key] || 48; 
+      exportEvents.forEach(event => {
+          const midiKey = keyToMidi[event.key] || 48; // Default to C4
           xmlString += `    <note key="${midiKey}" pan="0" len="${event.len}" pos="${event.pos}" vol="100"/>\n`;
-        }
       });
 
       xmlString += `  </pattern>
     </lmms-project>`;
-      downloadFile(xmlString, `${tuneData.title}.xpt`, 'application/xml');
-    }
-
-    //
-    // *** THIS IS THE NEW BUTTON CONNECTION LOGIC ***
-    //
-    toolButtons.forEach(btn => {
-        if (btn.dataset.type === 'note') {
-            btn.addEventListener('click', selectNoteTool);
-        } else if (btn.dataset.type === 'rest') {
-            btn.addEventListener('click', addRestTool);
-        }
+        
+        // Download file
+        const blob = new Blob([xmlString], { type: 'application/xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "tune-dex-variation.xpt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     });
-
-    clearButton.addEventListener('click', clearStaff);
-    exportXptButton.addEventListener('click', generateXpt);
-    exportMidiButton.addEventListener('click', () => {
-        alert("MIDI export is coming soon!");
-    });
-    undoButton.addEventListener('click', undoLastEvent);
-    
-    // --- Initial Load & Listener Setup ---
-    
-    // 1. Draw the staff for the first time
-    drawStaff(); 
-    
-    // 2. NOW that the stave is drawn, get its real coordinates
-    staveTopLineY = stave.getYForLine(0);
-    staveHalfSpacing = 5; 
-    
-    // 3. NOW, attach the listeners that depend on those coordinates
-    staffOutput.addEventListener('click', addEventAtClick);
-    staffOutput.addEventListener('mousemove', handleStaffMouseMove);
-    staffOutput.addEventListener('mouseleave', handleStaffMouseLeave);
 
 });
