@@ -38,7 +38,6 @@ h1 {
     color: #999;
     text-align: center;
     padding-top: 40px;
-    font-style: italic;
 }
 
 /* --- Piano Roll (Input) --- */
@@ -78,7 +77,6 @@ h1 {
 #piano-roll {
     position: relative;
     width: 100%;
-    /* 18 lines * 10px height per line = 180px */
     height: 180px; 
     background-color: #FFF;
     border: 1px solid #ccc;
@@ -106,7 +104,6 @@ h1 {
     height: 100%;
     background-color: #eee;
 }
-/* Make the measure lines darker */
 .piano-roll-beat.measure {
     background-color: #999;
 }
@@ -120,14 +117,8 @@ h1 {
     opacity: 0.8;
     box-sizing: border-box;
     height: 10px; /* Fit on one line */
-    /* This is the "tail" for resizing */
+    /* Add a tail for dragging */
     border-right: 5px solid rgba(0, 0, 0, 0.2);
-}
-
-.note-block.rest {
-    background-color: #aaa;
-    border-color: #777;
-    opacity: 0.5;
 }
 
 /* --- Controls --- */

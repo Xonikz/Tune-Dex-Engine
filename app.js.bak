@@ -35,19 +35,12 @@ window.addEventListener('load', (event) => {
     const lenToDuration = {
         1536: "w", 768: "h", 384: "w", 192: "h", 96: "q", 48: "8", 24: "16"
     };
-    // Helper to get Tone.js key from VexFlow key
-    const vexKeyToToneKey = (key) => key.replace("/", "");
 
     // --- The Tune-Dex Data Model ---
     let tuneData = {
       title: "My New Tune",
       events: [] // The "single source of truth"
     };
-    
-    // --- VexFlow Sizing Constants ---
-    let staveTopLineY;
-    let staveHalfSpacing;
-    let isStaveInitialized = false; 
 
     // --- Core Drawing Functions ---
 
@@ -69,7 +62,7 @@ window.addEventListener('load', (event) => {
             
             const label = document.createElement('div');
             label.className = 'piano-roll-label';
-            label.textContent = key;
+            label.textContent = key; // Full key name
             if (key.startsWith('C')) label.classList.add('tonic');
             pianoRollLabels.appendChild(label);
         });
@@ -140,14 +133,13 @@ window.addEventListener('load', (event) => {
 
         let notes = [];
         let tick = 0;
-        const events = [...tuneData.events];
+        const events = [...tuneData.events]; // Work on a copy
 
         while (tick < TOTAL_TICKS) {
             // Find events at the current tick
             const eventsAtPos = events.filter(e => e.pos === tick);
             
             if (eventsAtPos.length > 0) {
-                // We have a note or chord
                 const keys = eventsAtPos.filter(e => e.type === 'note').map(e => e.key);
                 const rest = eventsAtPos.find(e => e.type === 'rest');
                 const len = eventsAtPos[0].len; // All notes at one pos have same len
@@ -169,17 +161,11 @@ window.addEventListener('load', (event) => {
             } else {
                 // No event, add a rest to fill the gap
                 const nextEvent = events.find(e => e.pos > tick);
-                // Calculate gap to next note or end of timeline
                 const gap = (nextEvent ? nextEvent.pos : TOTAL_TICKS) - tick;
                 
-                if (gap > 0) {
-                    let rests = createRestsForGap(gap);
-                    notes.push(...rests);
-                    tick += gap;
-                } else {
-                    // Failsafe to prevent infinite loops
-                    tick = TOTAL_TICKS;
-                }
+                let rests = createRestsForGap(gap);
+                notes.push(...rests);
+                tick += gap;
             }
         }
         
@@ -226,21 +212,18 @@ window.addEventListener('load', (event) => {
         
         const percentX = x / rect.width;
         const tick = percentX * TOTAL_TICKS;
-        // Snap to the *start* of the 16th note grid square
-        const snappedTicks = Math.floor(tick / TICKS_PER_16TH) * TICKS_PER_16TH;
+        const snappedTicks = Math.round(tick / TICKS_PER_16TH) * TICKS_PER_16TH;
         
         return { vexKey, snappedTicks };
     }
 
-    // ** FIX: This now checks the full length of the note **
+    // Helper to find if a note exists at a click
     function findEventAtClick(e) {
         const { vexKey, snappedTicks } = getGridCoords(e);
         if (!vexKey) return -1;
         
         for (let i = 0; i < tuneData.events.length; i++) {
             const event = tuneData.events[i];
-            // Check if the *snapped tick* is within the *range* of an existing note
-            // And the click was on the right pitch
             if (event.key === vexKey && snappedTicks >= event.pos && snappedTicks < (event.pos + event.len)) {
                 return i; // Return the index
             }
@@ -250,10 +233,7 @@ window.addEventListener('load', (event) => {
     
     // ** New Interaction Logic **
     
-    async function handlePianoRollClick(e) {
-        // *** FIX: Await Tone.start() to fix audio crash ***
-        await Tone.start(); 
-        
+    function handlePianoRollClick(e) {
         const { vexKey, snappedTicks } = getGridCoords(e);
         if (!vexKey) return; 
 
@@ -276,9 +256,10 @@ window.addEventListener('load', (event) => {
         console.log("Adding event:", newEvent);
         tuneData.events.push(newEvent);
         
-        // Instant audio feedback
-        // *** FIX: Convert "G/3" to "G3" for Tone.js ***
-        synth.triggerAttackRelease(vexKeyToToneKey(newEvent.key), "16n", Tone.now());
+        // ** FIX: Start Tone.js *before* playing **
+        Tone.start().then(() => {
+            synth.triggerAttackRelease(newEvent.key, "16n", Tone.now());
+        });
         
         // Redraw only the piano roll
         drawNotesInPianoRoll();
@@ -315,7 +296,7 @@ window.addEventListener('load', (event) => {
             if (event.type === 'note') {
                 toneEvents.push({
                     time: `${event.pos}i`, // 'i' means ticks
-                    note: vexKeyToToneKey(event.key), // *** FIX: Convert to Tone.js key ***
+                    note: event.key,
                     duration: `${event.len}i`
                 });
             }
@@ -327,10 +308,7 @@ window.addEventListener('load', (event) => {
         Tone.Transport.ticks = 0; // Rewind
         
         currentSequence = new Tone.Part((time, value) => {
-            // *** FIX: Check if synth is disposed ***
-            if (synth && !synth.disposed) {
-                synth.triggerAttackRelease(value.note, value.duration, time);
-            }
+            synth.triggerAttackRelease(value.note, value.duration, time);
         }, toneEvents).start(0);
         
         // **Auto-Loop Logic**
@@ -351,9 +329,7 @@ window.addEventListener('load', (event) => {
         }
         Tone.Transport.stop();
         Tone.Transport.position = 0; // Reset to beginning
-        if (synth && !synth.disposed) {
-            synth.triggerRelease(); // Stop "stuck" notes
-        }
+        synth.triggerRelease(); // Stop any "stuck" notes
     }
 
     // --- Control Functions ---
@@ -437,6 +413,12 @@ window.addEventListener('load', (event) => {
     document.getElementById('stop-button').addEventListener('click', stopMelody);
     document.getElementById('clear-button').addEventListener('click', clearAll);
     document.getElementById('export-xpt-button').addEventListener('click', generateXpt);
+    // ** FIX for the crash **
+    // The button `export-midi-button` was removed from the HTML,
+    // so this line was causing the `addEventListener` crash.
+    // document.getElementById('export-midi-button').addEventListener('click', () => {
+    //     alert("MIDI export is coming soon!");
+    // });
     
     // New Seed button listeners
     document.getElementById('seed-load-button').addEventListener('click', loadFromSeed);

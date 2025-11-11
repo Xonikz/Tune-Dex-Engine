@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tune-Dex Engine (v4)</title>
+    <title>Tune-Dex Engine (v3)</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <script src="./vexflow.min.js"></script>
@@ -14,7 +14,7 @@
 
         <div id="staff-container">
             <div id="staff-output">
-                <p>Click the piano roll to add notes, then click "Play" to generate staff notation.</p>
+                <p>Click "Play" to generate staff notation.</p>
             </div>
         </div>
 
