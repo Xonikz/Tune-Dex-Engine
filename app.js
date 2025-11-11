@@ -2,6 +2,7 @@
 window.addEventListener('load', (event) => {
 
     // --- VexFlow Setup ---
+    // *** We NEED Voice and Formatter for this to work ***
     const { Factory, Formatter, StaveNote, BarNote, Voice } = Vex.Flow;
     
     // --- Tone.js Setup ---
@@ -35,7 +36,7 @@ window.addEventListener('load', (event) => {
     const lenToDuration = {
         1536: "w", 768: "h", 384: "w", 192: "h", 96: "q", 48: "8", 24: "16"
     };
-    // Helper to get Tone.js key from VexFlow key
+    // ** FIX: Helper to get Tone.js key from VexFlow key **
     const vexKeyToToneKey = (key) => key.replace("/", "");
 
     // --- The Tune-Dex Data Model ---
@@ -69,7 +70,7 @@ window.addEventListener('load', (event) => {
             
             const label = document.createElement('div');
             label.className = 'piano-roll-label';
-            label.textContent = key;
+            label.textContent = key; // Full key name
             if (key.startsWith('C')) label.classList.add('tonic');
             pianoRollLabels.appendChild(label);
         });
@@ -129,6 +130,14 @@ window.addEventListener('load', (event) => {
         
         const context = vf.getContext();
         stave.setContext(context).draw();
+        
+        // ** FIX for race condition: Get coordinates *after* drawing **
+        if (!isStaveInitialized) {
+            staveTopLineY = stave.getYForLine(0);
+            staveHalfSpacing = 5; 
+            isStaveInitialized = true;
+            console.log("Stave Initialized. Top Y:", staveTopLineY);
+        }
 
         if (tuneData.events.length === 0) {
             console.log("No notes to draw on staff.");
@@ -185,12 +194,29 @@ window.addEventListener('load', (event) => {
         
         // Create a Voice and add the notes
         const voice = new Voice({ num_beats: NUM_MEASURES * 4, beat_value: 4 });
-        voice.setStrict(false);
+        voice.setStrict(false); // ** FIXES IncompleteVoice ERROR **
         voice.addTickables(notes);
 
         // Format and draw
         new Formatter().joinVoices([voice]).format([voice], 400);
         voice.draw(context, stave);
+
+        // ** FIX for Erase/NaN bug: Store coordinates AFTER drawing **
+        let eventIndex = 0;
+        notes.forEach(note => {
+            if (note.getCategory() === 'stavenotes') {
+                // Find the *actual* event this note corresponds to
+                // This is tricky because of auto-filled rests.
+                // For now, we'll only store coords for *user-created* events.
+                const event = tuneData.events[eventIndex];
+                if (event && event.pos === note.getTicks().value()) {
+                    event.x = note.getAbsoluteX();
+                    event.width = note.getWidth();
+                    console.log(`Stored coords for note ${eventIndex} (key ${event.key}): ${event.x}, ${event.width}`);
+                    eventIndex++;
+                }
+            }
+        });
     }
 
     // Helper for auto-rest logic

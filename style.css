@@ -120,7 +120,7 @@ h1 {
     opacity: 0.8;
     box-sizing: border-box;
     height: 10px; /* Fit on one line */
-    /* This is the "tail" for resizing */
+    /* Add a tail for dragging */
     border-right: 5px solid rgba(0, 0, 0, 0.2);
 }
 
