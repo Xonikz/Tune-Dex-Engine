@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tune-Dex Engine (v3)</title>
+    <title>Tune-Dex Engine (v5)</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <script src="./vexflow.min.js"></script>
@@ -14,7 +14,7 @@
 
         <div id="staff-container">
             <div id="staff-output">
-                <p>Click "Play" to generate staff notation.</p>
+                <p>Click the piano roll to add notes, then click "Play" to generate staff notation.</p>
             </div>
         </div>
 
@@ -27,6 +27,14 @@
             <button id="play-button">Play / Update Staff</button>
             <button id="stop-button">Stop & Reset</button>
             <button id="clear-button">Clear All</button>
+            
+            <select id="style-select" title="Improvisation Style">
+                <option value="arp-major">Arpeggio (Major)</option>
+                <option value="waltz-bass">Waltz Bass</option>
+                <option value="power-chord">Power Chords</option>
+            </select>
+            <button id="generate-button" title="Improvise">Improvise</button>
+            
             <button id="export-xpt-button">Export .xpt</button>
         </div>
         

@@ -15,7 +15,7 @@ h1 {
 /* --- Main App Container --- */
 #app-container {
     width: 520px;
-    background-color: #5E716A; /* Green-grey base */
+    background-color: #5E716A;
     border: 1px solid #ccc;
     border-radius: 8px;
     padding: 10px;
@@ -25,12 +25,12 @@ h1 {
 /* --- Staff (Display) --- */
 #staff-container {
     position: relative; 
-    background-color: #F5F5DC; /* Cream */
+    background-color: #F5F5DC;
     border-radius: 5px;
     padding: 10px;
     box-sizing: border-box;
-    height: 170px; /* Taller to show ledger lines */
-    overflow: hidden; /* Hide any VexFlow overflow */
+    height: 170px;
+    overflow: hidden; 
 }
 
 #staff-output {
@@ -44,42 +44,51 @@ h1 {
 /* --- Piano Roll (Input) --- */
 #piano-roll-container {
     margin-top: 10px;
-    background-color: #F5F5DC; /* Cream */
+    background-color: #F5F5DC;
     border-radius: 5px;
     padding: 5px;
     box-sizing: border-box;
     display: flex;
     flex-direction: row;
+    height: 200px;
+    overflow-y: scroll;
+    overflow-x: hidden;
 }
 
 #piano-roll-labels {
-    width: 40px;
-    height: 180px;
     background-color: #eee;
     display: flex;
     flex-direction: column;
     border: 1px solid #ccc;
     border-right: none;
     box-sizing: border-box;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: bold;
+    color: #333;
 }
 
 .piano-roll-label {
-    height: 10px;
+    height: 15px; 
+    min-height: 15px;
     box-sizing: border-box;
-    font-size: 8px;
-    font-weight: bold;
-    color: #333;
     padding-left: 2px;
+    padding-top: 2px;
+    background-color: #F5F5DC;
+    color: #333;
+}
+.piano-roll-label.sharp {
+    background-color: #555;
+    color: #fff;
 }
 .piano-roll-label.tonic {
-    background-color: #ddd;
+    background-color: #ddd; /* C-Key */
 }
+
 
 #piano-roll {
     position: relative;
     width: 100%;
-    /* 18 lines * 10px height per line = 180px */
-    height: 180px; 
     background-color: #FFF;
     border: 1px solid #ccc;
     cursor: pointer;
@@ -89,14 +98,20 @@ h1 {
 /* A single line in the piano roll grid */
 .piano-roll-line {
     width: 100%;
-    height: 9px; /* 9px line + 1px border = 10px */
+    height: 14px; 
     border-bottom: 1px solid #eee;
     box-sizing: border-box;
+    background-color: #FFF;
+}
+.piano-roll-line.sharp {
+    background-color: #f0f0f0; 
+    border-bottom: 1px solid #f0f0f0;
 }
 .piano-roll-line.tonic {
-    background-color: #f0f0f0;
+    background-color: #e8e8e8; 
     border-bottom: 1px solid #ddd;
 }
+
 
 /* A single vertical line for beats */
 .piano-roll-beat {
@@ -104,23 +119,25 @@ h1 {
     top: 0;
     width: 1px;
     height: 100%;
-    background-color: #eee;
+    background-color: #eee; /* Lightest (16th) */
 }
-/* Make the measure lines darker */
+/* --- NEW: Darker Beat Line --- */
+.piano-roll-beat.beat {
+    background-color: #ccc; /* Medium (Beat) */
+}
 .piano-roll-beat.measure {
-    background-color: #999;
+    background-color: #999; /* Darkest (Measure) */
 }
 
 /* A note displayed in the piano roll */
 .note-block {
     position: absolute;
-    background-color: #B8860B; /* Goldenrod */
+    background-color: #B8860B; 
     border: 1px solid #9A700A;
     border-radius: 2px;
     opacity: 0.8;
     box-sizing: border-box;
-    height: 10px; /* Fit on one line */
-    /* Add a tail for dragging */
+    height: 15px; 
     border-right: 5px solid rgba(0, 0, 0, 0.2);
 }
 
@@ -135,13 +152,14 @@ h1 {
     margin-top: 5px; 
     background-color: transparent;
     color: #000000;
-    padding: 10px 0 0 0; /* Padding only on top */
+    padding: 10px 0 0 0; 
     border-radius: 0;
     border: none;
     border-top: 1px solid #4a5a54; 
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
 }
 
 #controls button {
@@ -157,6 +175,25 @@ h1 {
 #controls button:hover {
     background: #ddd;
 }
+
+/* --- Style for the dropdown and Generate button --- */
+#style-select {
+    border: 1px solid #aaa;
+    background: #eee;
+    color: #000;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 3px;
+    font-weight: bold;
+}
+
+#generate-button {
+    background-color: #B8860B; /* Goldenrod */
+    border-color: #9A700A;
+    font-weight: bold;
+}
+
 
 /* --- Seed Loader --- */
 #seed-loader {
